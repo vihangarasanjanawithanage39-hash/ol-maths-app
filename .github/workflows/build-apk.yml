@@ -1,4 +1,4 @@
-name: Auto Unzip, Build 120Hz APK & Release
+name: Auto Unzip, Build 120Hz Signed APK & Release
 
 on:
   push:
@@ -27,10 +27,9 @@ jobs:
 
       - name: Inject Auto-Update Repo & Version
         run: |
-          APP_VER="3.0.${{ github.run_number }}"
+          APP_VER="6.0.${{ github.run_number }}"
           sed -i "s|__APP_VERSION__|${APP_VER}|g" www/index.html
           sed -i "s|__GITHUB_REPO__|${{ github.repository }}|g" www/index.html
-          echo "Injected Version: $APP_VER for ${{ github.repository }}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -49,21 +48,31 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Enable Native 120Hz
+      - name: Enable Native 120Hz & Custom Icon
         run: npm run enable-120hz
 
-      - name: Build Debug APK
+      - name: Build Unsigned Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleRelease
 
-      - name: Publish Auto-Update Release
+      - name: Sign Release APK
+        id: sign_app
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: android/app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Publish Signed Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.0.${{ github.run_number }}
-          name: O/L Maths A+ Master v3.0.${{ github.run_number }}
-          body: "120Hz Ultra-Smooth Auto-Update Release"
-          files: android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v6.0.${{ github.run_number }}
+          name: O/L Maths A+ Master v6.0.${{ github.run_number }}
+          body: "120Hz Signed Release APK"
+          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
