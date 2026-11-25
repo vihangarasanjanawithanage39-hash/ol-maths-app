@@ -61,21 +61,19 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > release.jks
+          echo "$KEYSTORE_BASE64" | tr -d ' \n\r' | base64 -d > release.jks
           BUILD_TOOLS=$(ls -d ${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/* | sort -V | tail -n 1)
-          echo "Using build-tools: $BUILD_TOOLS"
           UNSIGNED_APK="android/app/build/outputs/apk/release/app-release-unsigned.apk"
           ALIGNED_APK="app-aligned.apk"
           SIGNED_APK="OL-Maths-A-Master-v6.0.${{ github.run_number }}.apk"
           "$BUILD_TOOLS/zipalign" -v -p 4 "$UNSIGNED_APK" "$ALIGNED_APK"
           "$BUILD_TOOLS/apksigner" sign \
             --ks release.jks \
-            --ks-key-alias "$KEY_ALIAS" \
+            --ks-type PKCS12 \
+            --ks-key-alias olmaths \
             --ks-pass "pass:$KEYSTORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
+            --key-pass "pass:$KEYSTORE_PASSWORD" \
             --out "$SIGNED_APK" \
             "$ALIGNED_APK"
           "$BUILD_TOOLS/apksigner" verify "$SIGNED_APK"
